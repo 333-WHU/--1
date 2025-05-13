@@ -1,43 +1,32 @@
 from osgeo import gdal
+import os
 
+input_path = "./Global_Fuel_Exploitation_Inventory_v2_2019_Total_Fuel_Exploitation.tif"
+output_path = "./out1km.tif"
+# 设置GDAL异常处理
+gdal.UseExceptions()
 
+try:
+    # 关键参数设置
+    warp_options = gdal.WarpOptions(
+        format='GTiff',
+        xRes=0.01,  # 1km分辨率（单位：度）
+        yRes=0.01,
+        resampleAlg='bilinear',
+        outputType=gdal.GDT_Float32,
+        dstNodata=-9999  # 明确设置NODATA值
+    )
+    
+    # 执行重采样
+    gdal.Warp(
+        destNameOrDestDS=output_path,
+        srcDSOrSrcDSTab=input_path,
+        options=warp_options
+    )
+    print(f"成功生成: {output_path}")
 
-
-class Point:
-    def __init__(self, x:int, y:int,gt):
-        self.x = x
-        self.y = y
-        self.longitude = gt[0] + x * gt[1] + y * gt[2]
-        self.latitude = gt[3] + x * gt[4] + y * gt[5]
-
-
-class tif:
-    def __init__(self,file_path):
-        self.file_path = file_path
-        self.dataset = gdal.Open(file_path)
-        self.gt = self.dataset.GetGeoTransform()
-        self.band = self.dataset.GetRasterBand(1)
-        self.array = self.band.ReadAsArray()
-        self.width = self.dataset.RasterXSize  # 列数
-        self.height = self.dataset.RasterYSize  # 行数
-        self.box = {'left': self.gt[0],
-                'top': self.gt[3], 
-                'right': self.gt[0] + self.gt[1] * self.width,
-                'bottom': self.gt[3] + self.gt[5] * self.height,
-                'width': self.width,
-                'height': self.height
-                }
-    def Get_x(self,center_x, center_y,side_length = 10):
-        '''根据图像中坐标获取通量值,x,y为中心行列号，返回长度为10的方阵'''
-        # 计算矩形范围
-        half = side_length // 2
-        if center_x < half or center_y < half:
-            return None
-        if center_x > self.width - half or center_y > self.height - half:
-            return None
-        x_left = center_x - half
-        y_top = center_y - half
-        # 读取数据
-        region = self.array(x_left, y_top, side_length, side_length)
-        return region        
-
+except Exception as e:
+    print(f"处理失败: {str(e)}")
+    # 清理可能生成的不完整文件
+    if os.path.exists(output_path):
+        os.remove(output_path)
