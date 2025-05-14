@@ -16,24 +16,29 @@ class triple:
         self.col_and_value = []
         self.max_col = 0
         self.min_col = 0
+        self.first_add = True
     
     def add(self, col, value):
         """添加元素"""
         self.col_and_value.append([col, value])
+        if self.first_add:
+            self.max_col = col
+            self.min_col = col
+            self.first_add = False
         if self.max_col < col:
             self.max_col = col
         if self.min_col > col:
             self.min_col = col
     def union(self,triple2):
-        """矩阵并集"""
-        if self.row != triple2.row:
+        """和相同行的矩阵行合并，相同的列取最大值"""
+        if self.row != triple2.row: # 行号不同,不合并
             return 0
         else:
             col_list = [col for col,value in self.col_and_value]
             for col,value in triple2.col_and_value:
                 # 如果列号不同添加列号
                 if col not in col_list:
-                    self.col_and_value.append([col,value])
+                    self.add(col,value)
                     col_list.append(col)
                     continue
                 # 如果列号相同取最大值
@@ -65,10 +70,15 @@ class triple_list:
         self.triple_list = []
         self.min_row = 0
         self.max_row = 0
+        self.first_add = True
 
     def add(self,triple):
         """添加一行"""
         self.triple_list.append(triple)
+        if self.first_add:
+            self.max_row = triple.row
+            self.min_row = triple.row
+            self.first_add = False
         if self.max_row < triple.row:
             self.max_row = triple.row
         if self.min_row > triple.row:
@@ -189,26 +199,25 @@ class tif:
                 'height': self.height
                 }
         self.NODATA = self.band.GetNoDataValue()
-    def Get_x(self,pt_list:list[Point],side_length = 10)->triple_list:
+    def Get_x(self,pt_list:list[Point],center_point:Point,side_length = 10)->triple_list:
         '''根据图像中坐标获取通量值,x,y为中心行列号，返回长度为10的方阵'''
         x_h = triple_list(0,0)
         # 计算矩形范围
         half = side_length // 2
         for pt in pt_list:
             # 根据经纬度在矩阵中找到以它为中心10x10区域
-            # 计算图像坐标
-            center_x = int((pt.longitude-self.box['left']) / self.gt[1])
-            center_y = int((pt.latitude-self.box['top']) / self.gt[5])
-            x_left = max(0,center_x - half)
-            y_top = max(0,center_y - half)
-            x_right = min(self.width,center_x + half)
-            y_bottom = min(self.height,center_y + half)
+            x_left = max(0,pt.x - half)
+            y_top = max(0,pt.y - half)
+            x_right = min(self.width,pt.x + half)
+            y_bottom = min(self.height,pt.y + half)
             for i in range(x_left,x_right):
-                t = triple(i)
+                row = i - center_point.x +135
+                t = triple(row)
                 for j in range(y_top,y_bottom):
+                    col = j - center_point.y +135
                     value = self.array[j,i]
                     if value != self.NODATA:
-                        t.add(j,value)
+                        t.add(col,value)
                 if t.col_and_value:
                     x_h.union(t)
         return x_h

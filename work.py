@@ -7,16 +7,24 @@ import time
 read_tif = tif("./out1km.tif")
 # 总体足迹矩阵
 read_H = read_martix("./footprints/")
-i = 0
+# 中心点
+mid_longitude = 112.7
+mid_latitude = 35.4
+mid_x = int((mid_longitude - read_tif.gt[0])/read_tif.gt[1])
+mid_y = int((mid_latitude - read_tif.gt[3])/read_tif.gt[5])
+center_point = Point(mid_x,mid_y,read_tif.gt)
+
 def fitness_f(ga_instance,solution, solution_idx):
     '''适应度函数'''
     point_list = solution.tolist()
     pt_list = []
     for i in range(0,5): # 提取基因中五个点的坐标(图像中坐标)
-        point = Point(point_list[2*i],point_list[2*i+1],read_tif.gt)
+        point = Point(point_list[2*i]+center_point.x,
+                      point_list[2*i+1]+center_point.y,
+                      read_tif.gt)
         pt_list.append(point)
     # 计算通量
-    x_h = read_tif.Get_x(pt_list)
+    x_h = read_tif.Get_x(pt_list,center_point)
     # 计算足迹矩阵
     H = read_H.Get_H(pt_list)
     # 计算点积
@@ -33,17 +41,17 @@ ga_instance = pygad.GA(
     sol_per_pop=50,
     num_genes=10,
     gene_type=int,
-    gene_space=[# 五个点的坐标，每个坐标由两个基因表示，取值范围为135到边界的整数
-        {'low': 135, 'high': box["width"]-135,'step':1},
-        {'low': 135, 'high': box["height"]-135,'step':1},
-        {'low': 135, 'high': box["width"]-135,'step':1},
-        {'low': 135, 'high': box["height"]-135,'step':1},
-        {'low': 135, 'high': box["width"]-135,'step':1},
-        {'low': 135, 'high': box["height"]-135,'step':1},
-        {'low': 135, 'high': box["width"]-135,'step':1},
-        {'low': 135, 'high': box["height"]-135,'step':1},
-        {'low': 135, 'high': box["width"]-135,'step':1},
-        {'low': 135, 'high': box["height"]-135,'step':1} 
+    gene_space=[# 五个点的坐标，每个坐标由两个基因表示，取值范围为0到70的整数
+        {'low': -35, 'high': 35,'step':1},
+        {'low': -35, 'high': 35,'step':1},
+        {'low': -35, 'high': 35,'step':1},
+        {'low': -35, 'high': 35,'step':1},
+        {'low': -35, 'high': 35,'step':1},
+        {'low': -35, 'high': 35,'step':1},
+        {'low': -35, 'high': 35,'step':1},
+        {'low': -35, 'high': 35,'step':1},
+        {'low': -35, 'high': 35,'step':1},
+        {'low': -35, 'high': 35,'step':1},
         ],
     parent_selection_type="sss",  # 稳态选择
     keep_parents=2,
@@ -59,7 +67,9 @@ solution, solution_fitness, _ = ga_instance.best_solution()
 solution = solution.tolist()
 point_list = []
 for i in range(0,5):
-    point = Point(solution[2*i],solution[2*i+1],read_tif.gt)
+    point = Point(solution[2*i]+center_point.x,
+                  solution[2*i+1]+center_point.y,
+                  read_tif.gt)
     point_list.append(point)
 print("最优解为：")
 for pt in point_list:
